@@ -1,0 +1,41 @@
+# Local Development Profile Configuration
+
+# Google OAuth2 Client Configuration for Local
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+
+# Cookie Configuration for Local
+auth:
+  cookie:
+    secure: false  # HTTP allowed in local
+    domain: ""  # No domain restriction in local
+
+# CORS Configuration for Local
+cors:
+  allowed-origins: http://localhost:4200
+
+# Frontend URL for Local
+frontend:
+  url: http://localhost:4200
+
+# User Service URL for Local
+user:
+  service:
+    url: http://localhost:8082
+
+# Server Port for Local
+server:
+  port: 8081
+
+# Logging for Local - More verbose
+logging:
+  level:
+    com.pradeep.auth: DEBUG
+    org.springframework.security: DEBUG
+

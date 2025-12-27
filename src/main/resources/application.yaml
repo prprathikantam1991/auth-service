@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: auth-service
+  
+  profiles:
+    active: local  # Default to local profile
+
+  # Google OAuth2 Client Configuration (common)
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            scope: openid,profile,email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v2/userinfo
+
+# Cookie Configuration (common)
+auth:
+  cookie:
+    name: id_token
+    same-site: strict
+    max-age: 3600
+
+# CORS Configuration (common settings)
+cors:
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true

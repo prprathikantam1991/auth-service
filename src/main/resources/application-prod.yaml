@@ -1,0 +1,43 @@
+# Production Profile Configuration
+
+# Google OAuth2 Client Configuration for Production
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            # Production redirect URI should be configured in Google Console
+
+# Cookie Configuration for Production
+auth:
+  cookie:
+    secure: true  # HTTPS required in production
+    domain: ${AUTH_COOKIE_DOMAIN}  # Set your production domain
+
+# CORS Configuration for Production
+cors:
+  allowed-origins: ${FRONTEND_URL:https://yourdomain.com}
+
+# Frontend URL for Production
+frontend:
+  url: ${FRONTEND_URL:https://yourdomain.com}
+
+# User Service URL for Production
+user:
+  service:
+    url: ${USER_SERVICE_URL:https://user-service.yourdomain.com}
+
+# Server Port for Production
+server:
+  port: ${SERVER_PORT:8081}
+
+# Logging for Production - Less verbose
+logging:
+  level:
+    com.pradeep.auth: INFO
+    org.springframework.security: WARN
+    root: INFO
+

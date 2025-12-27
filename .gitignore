@@ -1,0 +1,28 @@
+# Log file
+*.log
+
+# Package Files #
+*.jar
+
+# Maven
+target/
+
+# Compiled files
+*.class
+
+# IDEs
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/
+
+# OS
+.DS_Store
