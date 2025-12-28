@@ -7,8 +7,15 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
+            client-id: ${GOOGLE_CLIENT_ID:183570794532-kt0789kioogrn0ac73polvluu76m40sr.apps.googleusercontent.com}
             client-secret: ${GOOGLE_CLIENT_SECRET}
+  
+  # Redis Configuration for Local
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # No password for local development
 
 # Cookie Configuration for Local
 auth:
@@ -38,4 +45,6 @@ logging:
   level:
     com.pradeep.auth: DEBUG
     org.springframework.security: DEBUG
+    org.springframework.session: DEBUG
+    org.springframework.data.redis: DEBUG
 

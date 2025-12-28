@@ -14,6 +14,7 @@ Authentication Service for OAuth2 with Google. Handles user authentication and s
 - Java 17
 - Maven
 - PostgreSQL database (shared with EMS service)
+- Redis (for session storage)
 - Google OAuth2 credentials
 
 ## Configuration
@@ -45,11 +46,25 @@ The Auth Service uses the same database as the EMS Service:
 
 ## Running the Service
 
+### 1. Start Redis
+
+Using Docker Compose (recommended):
+```bash
+docker-compose up -d
+```
+
+Or manually:
+```bash
+docker run -d -p 6379:6379 --name auth-service-redis redis:7-alpine
+```
+
+### 2. Start Auth Service
+
 ```bash
 mvn spring-boot:run
 ```
 
-The service will start on port 8081.
+The service will start on port 8081 and connect to Redis on localhost:6379.
 
 ## API Endpoints
 
@@ -70,6 +85,7 @@ Returns current user information (requires authentication).
 - **User Management**: Creates and manages users in shared database
 - **Role Management**: Handled by EMS Service (roles are business logic)
 - **JWT Storage**: HttpOnly cookie (not accessible to JavaScript)
+- **Session Storage**: Redis (enables horizontal scalability and session persistence)
 - **Cookie Domain**: Configured in `application.properties` (empty for localhost)
 
 ## Integration with EMS Service
@@ -93,4 +109,13 @@ The Auth Service:
 - Secure: `false` (development), `true` (production)
 - SameSite: `strict`
 - MaxAge: `3600` (1 hour)
+
+### Session Configuration
+- **Storage**: Redis (shared across instances)
+- **Session Timeout**: 30 minutes
+- **Session Cookie**: `JSESSIONID` (managed by Spring Session)
+- **Benefits**: 
+  - Sessions survive server restarts
+  - Horizontal scalability (multiple instances share sessions)
+  - Production-ready session management
 

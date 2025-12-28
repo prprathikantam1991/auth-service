@@ -19,6 +19,21 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/oauth2/v2/userinfo
 
+  # Redis Configuration (common)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  # Spring Session Configuration
+  session:
+    store-type: redis
+    redis:
+      namespace: spring:session
+    timeout: 30m  # Session timeout (30 minutes)
+
 # Cookie Configuration (common)
 auth:
   cookie:

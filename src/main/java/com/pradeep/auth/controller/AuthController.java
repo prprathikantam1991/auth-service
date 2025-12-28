@@ -15,6 +15,8 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -141,21 +143,84 @@ public class AuthController {
         }
 
         String email = oidcUser.getEmail();
+        String googleId = oidcUser.getSubject();
+        
+        // #region agent log
+        try {
+            java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
+                (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"AuthController.java:145\",\"message\":\"Getting user info\",\"data\":{\"email\":\"%s\",\"googleId\":\"%s\"},\"timestamp\":%d}\n", 
+                    email != null ? email : "null", googleId != null ? googleId : "null", System.currentTimeMillis())).getBytes(), 
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (Exception e) {}
+        // #endregion
         
         // Get user info from User Service via UserServiceClient
         UserInfo userInfo = userServiceClient.getUserByEmail(email);
         
+        // #region agent log
+        try {
+            java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
+                (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"B\",\"location\":\"AuthController.java:152\",\"message\":\"UserInfo retrieved\",\"data\":{\"userInfo\":%s,\"hasRoles\":%s},\"timestamp\":%d}\n", 
+                    userInfo != null ? "not_null" : "null", 
+                    userInfo != null && userInfo.getRoles() != null ? String.valueOf(userInfo.getRoles().size()) : "0", 
+                    System.currentTimeMillis())).getBytes(), 
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+        } catch (Exception e) {}
+        // #endregion
+        
+        // Get user roles/authorities from User Service
+        List<String> roles = new ArrayList<>();
+        if (email != null && !email.isEmpty()) {
+            roles = userServiceClient.getUserAuthorities(email);
+            
+            // #region agent log
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
+                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"C\",\"location\":\"AuthController.java:159\",\"message\":\"Roles from email lookup\",\"data\":{\"rolesCount\":%d,\"roles\":%s},\"timestamp\":%d}\n", 
+                        roles.size(), roles.toString(), System.currentTimeMillis())).getBytes(), 
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception e) {}
+            // #endregion
+        }
+        
+        // If no roles found by email, try Google ID as fallback
+        if (roles.isEmpty() && googleId != null && !googleId.isEmpty()) {
+            roles = userServiceClient.getUserAuthoritiesByGoogleId(googleId);
+            
+            // #region agent log
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
+                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"D\",\"location\":\"AuthController.java:167\",\"message\":\"Roles from Google ID lookup\",\"data\":{\"rolesCount\":%d,\"roles\":%s},\"timestamp\":%d}\n", 
+                        roles.size(), roles.toString(), System.currentTimeMillis())).getBytes(), 
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception e) {}
+            // #endregion
+        }
+        
         if (userInfo != null) {
+            // Update roles in existing userInfo
+            userInfo.setRoles(roles);
+            
+            // #region agent log
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
+                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"E\",\"location\":\"AuthController.java:175\",\"message\":\"Final UserInfo with roles\",\"data\":{\"rolesCount\":%d,\"roles\":%s},\"timestamp\":%d}\n", 
+                        roles.size(), roles.toString(), System.currentTimeMillis())).getBytes(), 
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            } catch (Exception e) {}
+            // #endregion
+            
             return ResponseEntity.ok(userInfo);
         }
 
-        // If user not in User Service, return info from OIDC token
+        // If user not in User Service, return info from OIDC token with roles
         userInfo = new UserInfo(
                 null,
                 oidcUser.getEmail(),
                 oidcUser.getFullName(),
                 oidcUser.getPicture(),
-                oidcUser.getSubject()
+                oidcUser.getSubject(),
+                roles
         );
         return ResponseEntity.ok(userInfo);
     }
