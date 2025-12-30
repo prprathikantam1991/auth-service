@@ -4,7 +4,9 @@ import com.pradeep.auth.client.UserServiceClient;
 import com.pradeep.auth.config.CookieConfig;
 import com.pradeep.auth.dto.UserInfo;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +17,10 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -30,12 +35,31 @@ public class AuthController {
     @Value("${frontend.url:http://localhost:4200}")
     private String frontendUrl;
 
+    @Value("${auth.allowed-return-urls:http://localhost:4200}")
+    private String allowedReturnUrls;
+
     /**
      * Initiates OAuth2 login flow - redirects to Google
+     * Accepts returnUrl parameter to redirect back to originating app after login
      */
     @GetMapping("/login")
-    public void login(HttpServletResponse response) throws IOException {
-        log.info("Login endpoint called - redirecting to OAuth2 login");
+    public void login(
+            @RequestParam(value = "returnUrl", required = false) String returnUrl,
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+        log.info("Login endpoint called - returnUrl: {}", returnUrl);
+        
+        // Store returnUrl in session if provided and valid
+        if (returnUrl != null && !returnUrl.isEmpty()) {
+            if (isValidReturnUrl(returnUrl)) {
+                HttpSession session = request.getSession();
+                session.setAttribute("returnUrl", returnUrl);
+                log.info("Stored returnUrl in session: {}", returnUrl);
+            } else {
+                log.warn("Invalid returnUrl provided, ignoring: {}", returnUrl);
+            }
+        }
+        
         // Spring Security OAuth2 will handle the redirect
         response.sendRedirect("/oauth2/authorization/google");
     }
@@ -49,6 +73,7 @@ public class AuthController {
     @GetMapping("/success")
     public ResponseEntity<Void> handleSuccess(
             @AuthenticationPrincipal OidcUser oidcUser,
+            HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         
         if (oidcUser == null) {
@@ -100,8 +125,10 @@ public class AuthController {
 
             log.info("User authenticated and cookie set for: {}", email);
 
-            // Redirect to frontend
-            response.sendRedirect(frontendUrl + "/dashboard");
+            // Get returnUrl from session and redirect to it, or use default frontend URL
+            String redirectUrl = getReturnUrl(request);
+            log.info("Redirecting to: {}", redirectUrl);
+            response.sendRedirect(redirectUrl);
             return ResponseEntity.status(HttpStatus.FOUND).build();
 
         } catch (Exception e) {
@@ -112,13 +139,87 @@ public class AuthController {
     }
 
     /**
-     * Logout endpoint - clears the cookie
+     * Retrieves returnUrl from session and validates it
+     * Returns validated returnUrl or default frontend URL
+     */
+    private String getReturnUrl(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            String returnUrl = (String) session.getAttribute("returnUrl");
+            if (returnUrl != null && !returnUrl.isEmpty()) {
+                // Remove from session after use
+                session.removeAttribute("returnUrl");
+                
+                // Validate returnUrl before using it
+                if (isValidReturnUrl(returnUrl)) {
+                    log.info("Using returnUrl from session: {}", returnUrl);
+                    return returnUrl;
+                } else {
+                    log.warn("Invalid returnUrl in session, using default: {}", returnUrl);
+                }
+            }
+        }
+        
+        // Default to frontend URL with /dashboard
+        return frontendUrl + "/dashboard";
+    }
+
+    /**
+     * Validates returnUrl against whitelist to prevent open redirect attacks
+     * Only allows localhost URLs matching pattern: http://localhost:PORT or http://127.0.0.1:PORT
+     */
+    private boolean isValidReturnUrl(String returnUrl) {
+        if (returnUrl == null || returnUrl.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // Decode URL-encoded returnUrl
+            String decodedUrl = URLDecoder.decode(returnUrl, StandardCharsets.UTF_8);
+            
+            // Check if URL matches localhost pattern
+            if (!decodedUrl.startsWith("http://localhost:") && 
+                !decodedUrl.startsWith("http://127.0.0.1:")) {
+                log.warn("ReturnUrl does not match localhost pattern: {}", decodedUrl);
+                return false;
+            }
+
+            // Check against whitelist
+            List<String> allowedUrls = Arrays.asList(allowedReturnUrls.split(","));
+            for (String allowedUrl : allowedUrls) {
+                String trimmedAllowed = allowedUrl.trim();
+                // Check if returnUrl starts with any allowed URL
+                if (decodedUrl.startsWith(trimmedAllowed)) {
+                    log.debug("ReturnUrl validated against whitelist: {}", decodedUrl);
+                    return true;
+                }
+            }
+
+            log.warn("ReturnUrl not in whitelist: {}", decodedUrl);
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error validating returnUrl: {}", returnUrl, e);
+            return false;
+        }
+    }
+
+    /**
+     * Logout endpoint - invalidates session and clears the cookie
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         log.info("Logout endpoint called");
+        
+        // Invalidate session to remove from Redis
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+            log.info("Session invalidated and removed from Redis");
+        }
 
         // Clear cookie by setting it with max-age=0
+        // Must match the same attributes (domain, path, secure) used when setting it
         String cookieHeader = String.format("%s=; Path=/; HttpOnly; Max-Age=0; SameSite=%s",
                 cookieConfig.getCookieName(),
                 cookieConfig.getSameSite().substring(0, 1).toUpperCase() + 
@@ -128,7 +229,14 @@ public class AuthController {
             cookieHeader += "; Secure";
         }
 
+        // If domain was set when creating the cookie, it must be set when clearing it
+        Cookie tempCookie = cookieConfig.createTokenCookie("");
+        if (tempCookie.getDomain() != null && !tempCookie.getDomain().isEmpty()) {
+            cookieHeader += "; Domain=" + tempCookie.getDomain();
+        }
+
         response.setHeader("Set-Cookie", cookieHeader);
+        log.info("Cookie cleared: {}", cookieConfig.getCookieName());
 
         return ResponseEntity.ok().build();
     }

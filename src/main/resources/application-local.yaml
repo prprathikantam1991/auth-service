@@ -18,18 +18,22 @@ spring:
       # No password for local development
 
 # Cookie Configuration for Local
-auth:
-  cookie:
-    secure: false  # HTTP allowed in local
-    domain: ""  # No domain restriction in local
+  auth:
+    cookie:
+      secure: false  # HTTP allowed in local
+      domain: ""  # No domain restriction in local
 
 # CORS Configuration for Local
 cors:
-  allowed-origins: http://localhost:4200
+  allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202
 
 # Frontend URL for Local
 frontend:
   url: http://localhost:4200
+
+# Auth Configuration for Local
+auth:
+  allowed-return-urls: http://localhost:4200,http://localhost:4201,http://localhost:4202
 
 # User Service URL for Local
 user:
