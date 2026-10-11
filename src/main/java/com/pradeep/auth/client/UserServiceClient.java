@@ -68,17 +68,17 @@ public class UserServiceClient {
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("User created/updated in User Service: {}", email);
+                log.info("User created/updated in User Service");
                 return true;
             } else {
-                log.warn("Failed to create/update user in User Service: {} - Status: {}", email, response.getStatusCode());
+                log.warn("User Service create/update returned status {}", response.getStatusCode());
                 return false;
             }
         } catch (RestClientException e) {
-            log.error("Error calling User Service to create/update user: {}", email, e);
+            log.warn("User Service create/update request failed: {}", e.getClass().getSimpleName());
             return false;
         } catch (Exception e) {
-            log.error("Unexpected error creating/updating user in User Service: {}", email, e);
+            log.warn("Unexpected User Service create/update failure: {}", e.getClass().getSimpleName());
             return false;
         }
     }
@@ -108,13 +108,13 @@ public class UserServiceClient {
                 Map<String, Object> userData = response.getBody();
                 return mapToUserInfo(userData);
             } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-                log.debug("User not found in User Service: {}", email);
+                log.debug("User not found in User Service");
                 return null;
             }
         } catch (RestClientException e) {
-            log.warn("Failed to get user from User Service: {}", email, e);
+            log.warn("User Service user lookup failed: {}", e.getClass().getSimpleName());
         } catch (Exception e) {
-            log.error("Unexpected error getting user from User Service: {}", email, e);
+            log.warn("Unexpected User Service lookup failure: {}", e.getClass().getSimpleName());
         }
 
         return null;
@@ -145,13 +145,13 @@ public class UserServiceClient {
                 Map<String, Object> userData = response.getBody();
                 return mapToUserInfo(userData);
             } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-                log.debug("User not found in User Service by Google ID: {}", googleId);
+                log.debug("User not found in User Service by Google ID");
                 return null;
             }
         } catch (RestClientException e) {
-            log.warn("Failed to get user from User Service by Google ID: {}", googleId, e);
+            log.warn("User Service Google ID lookup failed: {}", e.getClass().getSimpleName());
         } catch (Exception e) {
-            log.error("Unexpected error getting user from User Service by Google ID: {}", googleId, e);
+            log.warn("Unexpected User Service Google ID lookup failure: {}", e.getClass().getSimpleName());
         }
 
         return null;
@@ -194,16 +194,16 @@ public class UserServiceClient {
                             .collect(Collectors.toList());
                 }
                 
-                log.debug("Retrieved {} authorities for user: {}", authorities.size(), email);
+                log.debug("Retrieved {} authorities for user", authorities.size());
                 return authorities;
             } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-                log.debug("User not found in User Service: {}", email);
+                log.debug("User not found in User Service");
                 return new ArrayList<>();
             }
         } catch (RestClientException e) {
-            log.warn("Failed to get authorities by email for user: {}", email, e);
+            log.warn("User Service authority lookup failed: {}", e.getClass().getSimpleName());
         } catch (Exception e) {
-            log.error("Unexpected error getting authorities by email for user: {}", email, e);
+            log.warn("Unexpected User Service authority lookup failure: {}", e.getClass().getSimpleName());
         }
 
         return new ArrayList<>();
@@ -246,16 +246,16 @@ public class UserServiceClient {
                             .collect(Collectors.toList());
                 }
                 
-                log.debug("Retrieved {} authorities for user by Google ID: {}", authorities.size(), googleId);
+                log.debug("Retrieved {} authorities for user by Google ID", authorities.size());
                 return authorities;
             } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
-                log.debug("User not found in User Service by Google ID: {}", googleId);
+                log.debug("User not found in User Service by Google ID");
                 return new ArrayList<>();
             }
         } catch (RestClientException e) {
-            log.warn("Failed to get authorities by Google ID for user: {}", googleId, e);
+            log.warn("User Service Google ID authority lookup failed: {}", e.getClass().getSimpleName());
         } catch (Exception e) {
-            log.error("Unexpected error getting authorities by Google ID for user: {}", googleId, e);
+            log.warn("Unexpected User Service Google ID authority lookup failure: {}", e.getClass().getSimpleName());
         }
 
         return new ArrayList<>();

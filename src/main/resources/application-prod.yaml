@@ -10,6 +10,9 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             # Production redirect URI should be configured in Google Console
+  data:
+    redis:
+      password: ${REDIS_PASSWORD}
 
 # Cookie Configuration for Production
 server:
@@ -32,11 +35,6 @@ user:
   service:
     url: ${USER_SERVICE_URL:https://user-service.yourdomain.com}
     api-key: ${USER_SERVICE_API_KEY}
-
-spring:
-  data:
-    redis:
-      password: ${REDIS_PASSWORD}
 
 # Server Port for Production
 server:

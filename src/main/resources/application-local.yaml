@@ -17,12 +17,6 @@ spring:
       port: 6379
       # No password for local development
 
-# Cookie Configuration for Local
-  auth:
-    cookie:
-      secure: false  # HTTP allowed in local
-      domain: ""  # No domain restriction in local
-
 # CORS Configuration for Local
 cors:
   allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202
