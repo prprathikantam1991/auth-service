@@ -226,6 +226,26 @@ public class AuthController {
         return ResponseEntity.ok(userInfo);
     }
 
+    /**
+     * Small browser-facing profile projection. Internal Google identifiers and
+     * authorization details stay within the service boundary.
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<ProfileResponse> getCurrentProfile(@AuthenticationPrincipal OidcUser oidcUser) {
+        if (oidcUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UserInfo userInfo = userServiceClient.getUserByEmail(oidcUser.getEmail());
+        if (userInfo == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        return ResponseEntity.ok(new ProfileResponse(userInfo.getName(), userInfo.getEmail(), userInfo.getPicture()));
+    }
+
+    public record ProfileResponse(String name, String email, String picture) {
+    }
+
     /** Private backend exchange; the browser never receives the internal owner identity. */
     @PostMapping("/finance/handoff/exchange")
     public ResponseEntity<java.util.Map<String, String>> exchangeFinanceHandoff(

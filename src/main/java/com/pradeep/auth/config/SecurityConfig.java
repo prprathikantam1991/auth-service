@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/success").authenticated()
                 
                 // Session-aware endpoints require an authenticated browser session.
-                .requestMatchers("/auth/logout", "/auth/user").authenticated()
+                .requestMatchers("/auth/logout", "/auth/user", "/auth/profile").authenticated()
                 
                 // OAuth2 callback endpoint (Spring Security default) - permit all
                 .requestMatchers("/login/oauth2/code/**").permitAll()
