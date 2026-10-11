@@ -231,7 +231,9 @@ public class AuthController {
     public ResponseEntity<java.util.Map<String, String>> exchangeFinanceHandoff(
             @RequestHeader(value = "X-Finance-Handoff-Key", required = false) String serviceKey,
             @RequestParam String code) {
-        if (serviceKey == null || !java.security.MessageDigest.isEqual(serviceKey.getBytes(StandardCharsets.UTF_8), financeHandoffServiceKey.getBytes(StandardCharsets.UTF_8))) {
+        if (financeHandoffServiceKey == null || financeHandoffServiceKey.isBlank()
+                || serviceKey == null
+                || !java.security.MessageDigest.isEqual(serviceKey.getBytes(StandardCharsets.UTF_8), financeHandoffServiceKey.getBytes(StandardCharsets.UTF_8))) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String ownerUserId = financeHandoffCodeService.consume(code);
