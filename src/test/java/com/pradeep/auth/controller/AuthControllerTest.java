@@ -1,6 +1,7 @@
 package com.pradeep.auth.controller;
 
 import com.pradeep.auth.client.UserServiceClient;
+import com.pradeep.auth.service.FinanceHandoffCodeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -27,7 +28,7 @@ class AuthControllerTest {
                 "person@example.com", "google-subject", "Example Person", "https://example.com/picture.png"
         )).thenReturn(false);
 
-        AuthController controller = new AuthController(userServiceClient);
+        AuthController controller = new AuthController(userServiceClient, mock(FinanceHandoffCodeService.class));
         ReflectionTestUtils.setField(controller, "frontendUrl", "http://localhost:4200");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession();

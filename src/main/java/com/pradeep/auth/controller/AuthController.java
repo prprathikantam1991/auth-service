@@ -2,6 +2,7 @@ package com.pradeep.auth.controller;
 
 import com.pradeep.auth.client.UserServiceClient;
 import com.pradeep.auth.dto.UserInfo;
+import com.pradeep.auth.service.FinanceHandoffCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -27,12 +28,19 @@ import java.util.List;
 public class AuthController {
 
     private final UserServiceClient userServiceClient;
+    private final FinanceHandoffCodeService financeHandoffCodeService;
 
     @Value("${frontend.url:http://localhost:4200}")
     private String frontendUrl;
 
     @Value("${auth.allowed-return-urls:http://localhost:4200}")
     private String allowedReturnUrls;
+
+    @Value("${finance.handoff.callback-url:http://localhost:8080/api/auth/handoff/callback}")
+    private String financeCallbackUrl;
+
+    @Value("${finance.handoff.service-key:${FINANCE_HANDOFF_SERVICE_KEY:}}")
+    private String financeHandoffServiceKey;
 
     /**
      * Initiates OAuth2 login flow - redirects to Google
@@ -98,10 +106,18 @@ public class AuthController {
 
             log.info("User provisioning completed");
 
+            UserInfo internalUser = userServiceClient.getUserByGoogleId(googleId);
+            if (internalUser == null || internalUser.getId() == null) {
+                invalidateSession(request);
+                response.sendRedirect(frontendUrl + "/login?error=user_lookup_failed");
+                return ResponseEntity.status(HttpStatus.FOUND).build();
+            }
+
             // Get returnUrl from session and redirect to it, or use default frontend URL
             String redirectUrl = getReturnUrl(request);
-            log.info("Redirecting to: {}", redirectUrl);
-            response.sendRedirect(redirectUrl);
+            String handoffCode = financeHandoffCodeService.issue("user:" + internalUser.getId());
+            response.sendRedirect(financeCallbackUrl + "?code=" + java.net.URLEncoder.encode(handoffCode, StandardCharsets.UTF_8)
+                    + "&returnUrl=" + java.net.URLEncoder.encode(redirectUrl, StandardCharsets.UTF_8));
             return ResponseEntity.status(HttpStatus.FOUND).build();
 
         } catch (Exception e) {
@@ -208,6 +224,19 @@ public class AuthController {
 
         userInfo.setRoles(userServiceClient.getUserAuthorities(email));
         return ResponseEntity.ok(userInfo);
+    }
+
+    /** Private backend exchange; the browser never receives the internal owner identity. */
+    @PostMapping("/finance/handoff/exchange")
+    public ResponseEntity<java.util.Map<String, String>> exchangeFinanceHandoff(
+            @RequestHeader(value = "X-Finance-Handoff-Key", required = false) String serviceKey,
+            @RequestParam String code) {
+        if (serviceKey == null || !java.security.MessageDigest.isEqual(serviceKey.getBytes(StandardCharsets.UTF_8), financeHandoffServiceKey.getBytes(StandardCharsets.UTF_8))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String ownerUserId = financeHandoffCodeService.consume(code);
+        return ownerUserId == null ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+                : ResponseEntity.ok(java.util.Map.of("ownerUserId", ownerUserId));
     }
 
     private void invalidateSession(HttpServletRequest request) {

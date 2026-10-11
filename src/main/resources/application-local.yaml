@@ -29,6 +29,11 @@ frontend:
 auth:
   allowed-return-urls: http://localhost:4200,http://localhost:4201,http://localhost:4202
 
+finance:
+  handoff:
+    callback-url: http://localhost:8080/api/auth/handoff/callback
+    service-key: ${FINANCE_HANDOFF_SERVICE_KEY:}
+
 # User Service URL for Local
 user:
   service:

@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 
                 // Auth login endpoint - permit all
-                .requestMatchers("/auth/login").permitAll()
+                .requestMatchers("/auth/login", "/auth/finance/handoff/exchange").permitAll()
                 
                 // Auth success endpoint - requires authentication (OAuth2 user will be available)
                 .requestMatchers("/auth/success").authenticated()
