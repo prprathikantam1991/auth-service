@@ -1,13 +1,15 @@
 # Auth Service
 
-Authentication Service for OAuth2 with Google. Handles user authentication and sets JWT tokens in HttpOnly cookies.
+Authentication Service for OAuth2 with Google. Handles user authentication and sets JWT tokens in HttpOnly cookies. Supports Single Sign-On (SSO) for multiple UI applications.
 
 ## Features
 
 - OAuth2 login flow with Google
+- Single Sign-On (SSO) support for multiple UI apps
 - User creation and management
 - JWT token in HttpOnly cookie (XSS safe)
 - Shared database with EMS Service for user data
+- Session-based authentication with Redis
 
 ## Prerequisites
 
@@ -71,14 +73,26 @@ The service will start on port 8081 and connect to Redis on localhost:6379.
 ### GET /auth/login
 Initiates OAuth2 login flow - redirects to Google.
 
-### GET /auth/callback
-Handles OAuth2 callback from Google. Creates/updates user and sets JWT in HttpOnly cookie.
+**Query Parameters:**
+- `returnUrl` (optional): URL to redirect to after successful login. Must be in the whitelist of allowed return URLs.
+
+**Example:**
+```
+GET /auth/login?returnUrl=http://localhost:4201/dashboard
+```
+
+### GET /auth/success
+Handles successful OAuth2 authentication. Creates/updates user, sets JWT in HttpOnly cookie, and redirects to returnUrl (or default frontend URL).
 
 ### POST /auth/logout
-Clears the authentication cookie.
+Clears the authentication cookie and session.
 
 ### GET /auth/user
-Returns current user information (requires authentication).
+Returns current user information. Returns 401 if not authenticated. Used by UI apps to check authentication status.
+
+**Response:**
+- `200 OK`: User is authenticated, returns user info with roles
+- `401 Unauthorized`: User is not authenticated
 
 ## Architecture
 
@@ -87,6 +101,7 @@ Returns current user information (requires authentication).
 - **JWT Storage**: HttpOnly cookie (not accessible to JavaScript)
 - **Session Storage**: Redis (enables horizontal scalability and session persistence)
 - **Cookie Domain**: Configured in `application.properties` (empty for localhost)
+- **SSO Support**: Session-based authentication allows multiple apps to share the same session via Redis
 
 ## Integration with EMS Service
 
@@ -118,4 +133,58 @@ The Auth Service:
   - Sessions survive server restarts
   - Horizontal scalability (multiple instances share sessions)
   - Production-ready session management
+  - SSO support: Multiple UI apps can share the same session
+
+## Single Sign-On (SSO) Configuration
+
+### How SSO Works
+
+1. **User visits any UI app** (e.g., `localhost:4200` or `localhost:4201`)
+   - App calls `/auth/user` to check authentication status
+   - If not authenticated, redirects to `/auth/login?returnUrl=<app-url>`
+
+2. **User authenticates via auth-service**
+   - Auth service stores session in Redis
+   - Sets cookies for `localhost:8081` (auth-service domain)
+   - Redirects back to originating app via `returnUrl`
+
+3. **User visits another app**
+   - App calls `/auth/user` with `withCredentials: true`
+   - Browser automatically sends cookies to auth-service
+   - Auth service validates session from Redis
+   - Returns user info - user is authenticated across all apps!
+
+### Configuration for Multiple Apps
+
+**File:** `src/main/resources/application-local.yaml`
+
+```yaml
+# CORS Configuration - Add all UI app origins
+cors:
+  allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202
+
+# Whitelist of allowed return URLs for security
+auth:
+  allowed-return-urls: http://localhost:4200,http://localhost:4201,http://localhost:4202
+```
+
+### Adding a New UI App
+
+1. **Update CORS configuration:**
+   - Add the new app's origin to `cors.allowed-origins` in `application-local.yaml`
+
+2. **Update return URL whitelist:**
+   - Add the new app's URL to `auth.allowed-return-urls` in `application-local.yaml`
+
+3. **Configure Angular app:**
+   - Set `authServiceUrl` to `http://localhost:8081`
+   - Use `withCredentials: true` for all requests to auth-service
+   - Call `/auth/user` on app initialization to check authentication status
+
+### Security Notes
+
+- **Return URL Validation**: Only URLs in the whitelist are allowed to prevent open redirect attacks
+- **Cookie Security**: Cookies are HttpOnly and set for auth-service domain only
+- **Session Sharing**: Sessions are stored in Redis and validated via API calls
+- **CORS**: Only whitelisted origins can access auth-service APIs
 
