@@ -234,11 +234,15 @@ public class AuthController {
         if (financeHandoffServiceKey == null || financeHandoffServiceKey.isBlank()
                 || serviceKey == null
                 || !java.security.MessageDigest.isEqual(serviceKey.getBytes(StandardCharsets.UTF_8), financeHandoffServiceKey.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("Rejected Finance handoff exchange due to an invalid service credential");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         String ownerUserId = financeHandoffCodeService.consume(code);
-        return ownerUserId == null ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
-                : ResponseEntity.ok(java.util.Map.of("ownerUserId", ownerUserId));
+        if (ownerUserId == null) {
+            log.warn("Rejected Finance handoff exchange due to an expired or already-used code");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(java.util.Map.of("ownerUserId", ownerUserId));
     }
 
     private void invalidateSession(HttpServletRequest request) {
