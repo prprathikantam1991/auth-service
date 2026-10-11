@@ -7,9 +7,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig {
 
     @Bean
@@ -44,7 +46,11 @@ public class SecurityConfig {
             .oauth2Login(oauth2 -> oauth2
                 .loginPage("/auth/login")
                 .defaultSuccessUrl("/auth/success", true)
-                .failureUrl("/auth/login?error=true")
+                .failureHandler((request, response, exception) -> {
+                    // Safe diagnostics only: never log authorization codes, tokens, or cookies.
+                    log.warn("Google OAuth sign-in failed: {}", exception.getMessage());
+                    response.sendRedirect("/auth/login?error=true");
+                })
             );
 
         return http.build();
