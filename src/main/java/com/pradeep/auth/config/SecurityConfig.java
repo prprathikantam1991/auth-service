@@ -18,6 +18,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf
+                // This is a private service-to-service exchange, authenticated with
+                // X-Finance-Handoff-Key rather than a browser cookie/session.
+                .ignoringRequestMatchers("/auth/finance/handoff/exchange")
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             )
             .cors(cors -> {}) // Enable CORS (uses CorsConfig bean)
