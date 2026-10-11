@@ -44,10 +44,11 @@ user:
 server:
   port: 8081
 
-# Logging for Local - More verbose
+# Keep framework identity logs quiet even locally: Spring Security debug output can
+# include OAuth provider claims such as email addresses and subject identifiers.
 logging:
   level:
-    com.pradeep.auth: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.session: DEBUG
-    org.springframework.data.redis: DEBUG
+    com.pradeep.auth: INFO
+    org.springframework.security: WARN
+    org.springframework.session: WARN
+    org.springframework.data.redis: WARN
