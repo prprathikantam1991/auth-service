@@ -39,6 +39,7 @@ auth:
 user:
   service:
     url: http://localhost:8082
+    api-key: ${USER_SERVICE_API_KEY}
 
 # Server Port for Local
 server:
@@ -51,4 +52,3 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.session: DEBUG
     org.springframework.data.redis: DEBUG
-

@@ -1,22 +1,23 @@
 package com.pradeep.auth.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for API endpoints
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            )
             .cors(cors -> {}) // Enable CORS (uses CorsConfig bean)
             .authorizeHttpRequests(auth -> auth
                 // Allow CORS preflight requests
@@ -31,8 +32,8 @@ public class SecurityConfig {
                 // Auth success endpoint - requires authentication (OAuth2 user will be available)
                 .requestMatchers("/auth/success").authenticated()
                 
-                // Auth logout and user endpoints - permit all (handled by controller)
-                .requestMatchers("/auth/logout", "/auth/user").permitAll()
+                // Session-aware endpoints require an authenticated browser session.
+                .requestMatchers("/auth/logout", "/auth/user").authenticated()
                 
                 // OAuth2 callback endpoint (Spring Security default) - permit all
                 .requestMatchers("/login/oauth2/code/**").permitAll()
@@ -49,4 +50,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

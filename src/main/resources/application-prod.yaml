@@ -12,10 +12,12 @@ spring:
             # Production redirect URI should be configured in Google Console
 
 # Cookie Configuration for Production
-auth:
-  cookie:
-    secure: true  # HTTPS required in production
-    domain: ${AUTH_COOKIE_DOMAIN}  # Set your production domain
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+        domain: ${AUTH_SESSION_COOKIE_DOMAIN}
 
 # CORS Configuration for Production
 cors:
@@ -29,6 +31,12 @@ frontend:
 user:
   service:
     url: ${USER_SERVICE_URL:https://user-service.yourdomain.com}
+    api-key: ${USER_SERVICE_API_KEY}
+
+spring:
+  data:
+    redis:
+      password: ${REDIS_PASSWORD}
 
 # Server Port for Production
 server:
@@ -40,4 +48,3 @@ logging:
     com.pradeep.auth: INFO
     org.springframework.security: WARN
     root: INFO
-

@@ -1,13 +1,13 @@
 # Auth Service
 
-Authentication Service for OAuth2 with Google. Handles user authentication and sets JWT tokens in HttpOnly cookies. Supports Single Sign-On (SSO) for multiple UI applications.
+Authentication Service for OAuth2 with Google. It maintains Redis-backed authenticated browser sessions and supports Single Sign-On (SSO) for multiple UI applications.
 
 ## Features
 
 - OAuth2 login flow with Google
 - Single Sign-On (SSO) support for multiple UI apps
 - User creation and management
-- JWT token in HttpOnly cookie (XSS safe)
+- Redis-backed browser session cookie (HttpOnly)
 - Shared database with EMS Service for user data
 - Session-based authentication with Redis
 
@@ -82,7 +82,7 @@ GET /auth/login?returnUrl=http://localhost:4201/dashboard
 ```
 
 ### GET /auth/success
-Handles successful OAuth2 authentication. Creates/updates user, sets JWT in HttpOnly cookie, and redirects to returnUrl (or default frontend URL).
+Handles successful OAuth2 authentication, requires successful user provisioning, and redirects to returnUrl (or default frontend URL). Google ID tokens are not copied into an application cookie.
 
 ### POST /auth/logout
 Clears the authentication cookie and session.
@@ -98,7 +98,7 @@ Returns current user information. Returns 401 if not authenticated. Used by UI a
 
 - **User Management**: Creates and manages users in shared database
 - **Role Management**: Handled by EMS Service (roles are business logic)
-- **JWT Storage**: HttpOnly cookie (not accessible to JavaScript)
+- **Browser authentication**: Redis-backed Spring Session with an HttpOnly cookie (not accessible to JavaScript)
 - **Session Storage**: Redis (enables horizontal scalability and session persistence)
 - **Cookie Domain**: Configured in `application.properties` (empty for localhost)
 - **SSO Support**: Session-based authentication allows multiple apps to share the same session via Redis
@@ -118,12 +118,12 @@ The Auth Service:
 - EMS Service: `8080`
 - Frontend: `4200`
 
-### Cookie Configuration
-- Cookie name: `id_token`
+### Session Cookie Configuration
+- Cookie name: Spring Session default (`SESSION`), configurable by the deployment
 - HttpOnly: `true`
-- Secure: `false` (development), `true` (production)
-- SameSite: `strict`
-- MaxAge: `3600` (1 hour)
+- Secure: `false` in the explicit local profile, `true` in production
+- SameSite: `lax`
+- Server-side session timeout: `30 minutes`
 
 ### Session Configuration
 - **Storage**: Redis (shared across instances)
@@ -187,4 +187,5 @@ auth:
 - **Cookie Security**: Cookies are HttpOnly and set for auth-service domain only
 - **Session Sharing**: Sessions are stored in Redis and validated via API calls
 - **CORS**: Only whitelisted origins can access auth-service APIs
-
+- **User Service calls**: Auth Service sends `X-Internal-Api-Key` to the protected User Service API. Set the same `USER_SERVICE_API_KEY` value for both services; do not commit it.
+- **CSRF**: Browser state-changing endpoints use Spring Security CSRF protection. A browser client must send the CSRF token header with cookie-authenticated writes such as logout.

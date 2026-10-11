@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,6 +35,9 @@ public class UserServiceClient {
     @Value("${user.service.url:http://localhost:8082}")
     private String userServiceUrl;
 
+    @Value("${user.service.api-key:}")
+    private String userServiceApiKey;
+
     /**
      * Create or update user in User Service (idempotent operation)
      * @param email User email
@@ -58,7 +63,7 @@ public class UserServiceClient {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
-                    new org.springframework.http.HttpEntity<>(userRequest),
+                    internalRequest(userRequest),
                     new ParameterizedTypeReference<Map<String, Object>>() {}
             );
 
@@ -94,7 +99,7 @@ public class UserServiceClient {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    internalRequest(),
                     new ParameterizedTypeReference<Map<String, Object>>() {},
                     email
             );
@@ -131,7 +136,7 @@ public class UserServiceClient {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    internalRequest(),
                     new ParameterizedTypeReference<Map<String, Object>>() {},
                     googleId
             );
@@ -166,35 +171,14 @@ public class UserServiceClient {
         try {
             String url = userServiceUrl + "/api/users/{email}/authorities";
             
-            // #region agent log
-            try {
-                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
-                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"F\",\"location\":\"UserServiceClient.java:167\",\"message\":\"Calling User Service authorities endpoint\",\"data\":{\"url\":\"%s\",\"email\":\"%s\"},\"timestamp\":%d}\n", 
-                        url, email, System.currentTimeMillis())).getBytes(), 
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception e) {}
-            // #endregion
-            
             // User Service returns AuthoritiesResponse wrapper: { "authorities": ["ROLE_HR", ...] }
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    internalRequest(),
                     new ParameterizedTypeReference<Map<String, Object>>() {},
                     email
             );
-
-            // #region agent log
-            try {
-                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
-                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"G\",\"location\":\"UserServiceClient.java:178\",\"message\":\"User Service response\",\"data\":{\"status\":\"%s\",\"hasBody\":%s,\"body\":%s},\"timestamp\":%d}\n", 
-                        response.getStatusCode().toString(), 
-                        response.getBody() != null ? "true" : "false",
-                        response.getBody() != null ? response.getBody().toString() : "null",
-                        System.currentTimeMillis())).getBytes(), 
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception e) {}
-            // #endregion
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
@@ -210,15 +194,6 @@ public class UserServiceClient {
                             .collect(Collectors.toList());
                 }
                 
-                // #region agent log
-                try {
-                    java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
-                        (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"J\",\"location\":\"UserServiceClient.java:195\",\"message\":\"Extracted authorities\",\"data\":{\"authoritiesCount\":%d,\"authorities\":%s},\"timestamp\":%d}\n", 
-                            authorities.size(), authorities.toString(), System.currentTimeMillis())).getBytes(), 
-                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-                } catch (Exception e) {}
-                // #endregion
-                
                 log.debug("Retrieved {} authorities for user: {}", authorities.size(), email);
                 return authorities;
             } else if (response.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -227,26 +202,8 @@ public class UserServiceClient {
             }
         } catch (RestClientException e) {
             log.warn("Failed to get authorities by email for user: {}", email, e);
-            
-            // #region agent log
-            try {
-                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
-                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"H\",\"location\":\"UserServiceClient.java:194\",\"message\":\"RestClientException\",\"data\":{\"error\":\"%s\"},\"timestamp\":%d}\n", 
-                        e.getMessage(), System.currentTimeMillis())).getBytes(), 
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ex) {}
-            // #endregion
         } catch (Exception e) {
             log.error("Unexpected error getting authorities by email for user: {}", email, e);
-            
-            // #region agent log
-            try {
-                java.nio.file.Files.write(java.nio.file.Paths.get("w:\\projects\\angular\\ems-ui\\.cursor\\debug.log"), 
-                    (String.format("{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"I\",\"location\":\"UserServiceClient.java:200\",\"message\":\"Exception getting authorities\",\"data\":{\"error\":\"%s\"},\"timestamp\":%d}\n", 
-                        e.getMessage(), System.currentTimeMillis())).getBytes(), 
-                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ex) {}
-            // #endregion
         }
 
         return new ArrayList<>();
@@ -270,7 +227,7 @@ public class UserServiceClient {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    internalRequest(),
                     new ParameterizedTypeReference<Map<String, Object>>() {},
                     googleId
             );
@@ -334,5 +291,21 @@ public class UserServiceClient {
             return null;
         }
     }
-}
 
+    private HttpEntity<Void> internalRequest() {
+        return new HttpEntity<>(internalHeaders());
+    }
+
+    private HttpEntity<Map<String, String>> internalRequest(Map<String, String> body) {
+        return new HttpEntity<>(body, internalHeaders());
+    }
+
+    private HttpHeaders internalHeaders() {
+        if (userServiceApiKey == null || userServiceApiKey.isBlank()) {
+            throw new IllegalStateException("USER_SERVICE_API_KEY must be configured for User Service calls");
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Internal-Api-Key", userServiceApiKey);
+        return headers;
+    }
+}
